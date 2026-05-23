@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User{
+  id         Int @id @default(autoincrement())
+  email      String @unique
+  name       String 
+  createdAt  DateTime @default(now())
+}
+
+
+
+model Locality {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  region    String?
+  createdAt DateTime @default(now())
+
+  fromFares Fare[]   @relation("FromLocality")
+  toFares   Fare[]   @relation("ToLocality")
+
+}
+
+
+model VehicleType {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  fares        Fare[]
+}
+
+
+model Fare {
+  id     Int @id @default(autoincrement())
+
+  fromLocalityId Int
+  toLocalityId   Int
+  vehicleTypeId  Int
+
+  price Float
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  fromLocality Locality  @relation("FromLocality", fields: [ fromLocalityId], references: [id])
+  toLocality   Locality  @relation("ToLocality",   fields:  [toLocalityId],    references: [id])
+
+
+  vehicleType  VehicleType @relation( fields: [vehicleTypeId], references: [id])
+
+  @@unique([fromLocalityId, toLocalityId, vehicleTypeId])
+
+}
+
+// postgresql://USER:Password@host:PORT/DATABASE?schema=SCHEMA
+
+// DATABASE_URL="postgresql://postgres@localhost:5432/passo_db"
+
+// npx prisma migrate dev --name create_fare_table
