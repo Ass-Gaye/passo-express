@@ -1,26 +1,22 @@
 const prisma = require('../../config/prisma.js');
 
 const getAll = async () => {
-    try {
-        return await prisma.Fare.findMany({
-            include: {
-                fromLocality: true,
-                toLocality: true,
-                vehicleType: true
-            },
 
-            orderBy: {
-                createdAt: 'desc'
-            }
+    return prisma.fare.findMany({
+
+        include: {
+            fromLocality: true,
+            toLocality: true,
+            vehicleType: true
+        }
+
     });
 
-    } catch (error) {
-        console.log('cannot find fares', error);  
-    }
-}
+};
+
 
 const getOne = async (id) => {
-    return await prisma.Fare.findUnique({
+    return await prisma.fare.findUnique({
         where: {
             id: Number(id)
         },
@@ -34,7 +30,7 @@ const getOne = async (id) => {
 }
 
 const create = async (payload) => {
-     const fare = await prisma.Fare.create({
+     const fare = await prisma.fare.create({
         data: {
             fromLocalityId: payload.fromLocalityId,
             toLocalityId: payload.toLocalityId,
@@ -47,19 +43,27 @@ const create = async (payload) => {
 }
 
 const update = async (id, payload) => {
-    return await prisma.Fare.update({
+
+    return await prisma.fare.update({
+
         where: {
             id: Number(id)
         },
 
         data: {
-            payload
+            fromLocalityId: Number(payload.fromLocalityId),
+
+            toLocalityId: Number(payload.toLocalityId),
+
+            vehicleTypeId: Number(payload.vehicleTypeId),
+
+            price: Number(payload.price)
         }
     });
 }
 
 const remove = async (id) => {
-    return await prisma.Fare.delete({
+    return await prisma.fare.delete({
         where: {
             id: Number(id)
         }

@@ -8,9 +8,9 @@ router.get('/:id', fareController.getFare);
 
 router.post('/', fareController.createFare);
 
-router.put('/', fareController.updateFare);
+router.put('/:id', fareController.updateFare);
 
-router.delete('/', fareController.deleteFare);
+router.delete('/:id', fareController.deleteFare);
 
 
 module.exports = router;

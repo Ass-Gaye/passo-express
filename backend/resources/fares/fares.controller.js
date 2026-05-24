@@ -66,14 +66,21 @@ const updateFare = async (req, res) => {
 
 
 const deleteFare = async (req, res) => {
+
     try {
-        const fare = await fareDB.remove(req.params.id);
+
+        await fareDB.remove(req.params.id);
+
+        res.status(200).json({
+            message: 'Fare deleted successfully'
+        });
 
     } catch (error) {
+
         res.status(500).json({
             message: error.message
         });
-    } 
+    }
 }
 
 

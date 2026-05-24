@@ -1,61 +1,77 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState
+} from 'react'
 
-import { getLocalities } from "../services/localities.service";
+import { getLocalities } from '../services/localities.service'
 
 
 const Localities = () => {
 
-    const [localities, setLocalities] = useState([])
+  const [localities, setLocalities] = useState([])
 
 
-    useEffect( () => {
+  useEffect(() => {
 
-        const fetchLocalities = async () => {
-            try {
-                const data = await getLocalities()
+    const fetchLocalities = async () => {
 
-                setLocalities(data)
-                
-            } catch (error) {
-                console.error(error)
-            }     
-        }
+      try {
 
-    }, [])
+        const data =
+          await getLocalities()
+
+        setLocalities(data)
+
+      } catch (error) {
+
+        console.error(error)
+      }
+    }
+
+    fetchLocalities()
+
+  }, [])
 
 
+  return (
+
+    <div className="min-h-screen bg-gray-50 p-6">
+
+      <div className="max-w-7xl mx-auto">
+
+        <h1 className="text-5xl font-bold mb-10">
+          Localities
+        </h1>
 
 
-    return(
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <div className="p-6">
-            <h1 className="text-3xl font-bold mb-6">
-                Localities
-            </h1>
+          {localities.map((locality) => (
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div
+              key={locality.id}
+              className="
+                bg-white
+                rounded-2xl
+                p-6
+                shadow-sm
+              "
+            >
 
-                {localities.map( (locality) => (
-
-                    <div key={locality.id} className="border p-4 rounded-lg shadow">
-
-                        <h2 className="text-xl font-semibold">
-                            {locality.name}
-                        </h2>
-
-                        <p>
-                            {locality.region}
-                        </p>
-
-                    </div>
-
-                ))}
+              <h2 className="text-2xl font-bold">
+                {locality.name}
+              </h2>
 
             </div>
 
-        </div>
-    )
+          ))}
 
+        </div>
+
+      </div>
+
+    </div>
+  )
 }
 
 export default Localities

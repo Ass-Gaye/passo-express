@@ -8,7 +8,12 @@ router.use('/fares', faresRoutes);
 
 router.use('/localities', localityRoutes);
 
-router.use('/vehicleTypes', vehicleTypeRoutes);
+router.use('/vehicle-types', vehicleTypeRoutes);
 
 
 module.exports = router;
+
+
+
+
+
