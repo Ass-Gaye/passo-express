@@ -12,62 +12,371 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== AUTHENTICATION & AUTHORIZATION ====================
 
-model User{
-  id         Int @id @default(autoincrement())
-  email      String @unique
-  name       String 
-  createdAt  DateTime @default(now())
+model User {
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  password          String
+  name              String
+  phone             String?
+  profilePicture    String?
+  role              UserRole @default(PASSENGER)
+  status            UserStatus @default(ACTIVE)
+  lastLogin         DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  bookings          Booking[]
+  notifications     Notification[]
+  payments          Payment[]
+  vehicles          Vehicle[]
+  adminDashboard    AdminDashboard?
+
+  @@index([email])
+  @@index([role])
 }
 
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+  DRIVER
+  PASSENGER
+}
 
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED
+}
+
+// ==================== TRANSPORT CORE ====================
 
 model Locality {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   region    String?
+  latitude  Float?
+  longitude Float?
   createdAt DateTime @default(now())
 
-  fromFares Fare[]   @relation("FromLocality")
-  toFares   Fare[]   @relation("ToLocality")
-
+  fromFares     Fare[]   @relation("FromLocality")
+  toFares       Fare[]   @relation("ToLocality")
+  fromRoutes    Route[]  @relation("RouteFrom")
+  toRoutes      Route[]  @relation("RouteTo")
+  
+  @@index([region])
 }
-
 
 model VehicleType {
   id          Int     @id @default(autoincrement())
   name        String  @unique
   description String?
+  capacity    Int?
+  icon        String?
   createdAt   DateTime @default(now())
 
-  fares        Fare[]
+  fares       Fare[]
+  vehicles    Vehicle[]
+  routes      Route[]
 }
-
 
 model Fare {
-  id     Int @id @default(autoincrement())
+  id                Int @id @default(autoincrement())
+  fromLocalityId    Int
+  toLocalityId      Int
+  vehicleTypeId     Int
+  price             Float
+  originalPrice     Float?
+  discount          Float? @default(0)
+  isActive          Boolean @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  fromLocalityId Int
-  toLocalityId   Int
-  vehicleTypeId  Int
+  fromLocality      Locality @relation("FromLocality", fields: [fromLocalityId], references: [id], onDelete: Cascade)
+  toLocality        Locality @relation("ToLocality", fields: [toLocalityId], references: [id], onDelete: Cascade)
+  vehicleType       VehicleType @relation(fields: [vehicleTypeId], references: [id], onDelete: Cascade)
 
-  price Float
-
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-
-  fromLocality Locality  @relation("FromLocality", fields: [ fromLocalityId], references: [id])
-  toLocality   Locality  @relation("ToLocality",   fields:  [toLocalityId],    references: [id])
-
-
-  vehicleType  VehicleType @relation( fields: [vehicleTypeId], references: [id])
+  bookings          Booking[]
+  priceHistory      PriceHistory[]
 
   @@unique([fromLocalityId, toLocalityId, vehicleTypeId])
-
+  @@index([isActive])
 }
 
-// postgresql://USER:Password@host:PORT/DATABASE?schema=SCHEMA
+model Route {
+  id                Int      @id @default(autoincrement())
+  name              String
+  fromLocalityId    Int
+  toLocalityId      Int
+  vehicleTypeId     Int
+  distance          Float?
+  estimatedDuration Int?     // in minutes
+  waypoints         String?  // JSON array of coordinates
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-// DATABASE_URL="postgresql://postgres@localhost:5432/passo_db"
+  fromLocality      Locality @relation("RouteFrom", fields: [fromLocalityId], references: [id], onDelete: Cascade)
+  toLocality        Locality @relation("RouteTo", fields: [toLocalityId], references: [id], onDelete: Cascade)
+  vehicleType       VehicleType @relation(fields: [vehicleTypeId], references: [id], onDelete: Cascade)
 
-// npx prisma migrate dev --name create_fare_table
+  vehicles          Vehicle[]
+  trips             Trip[]
+
+  @@unique([fromLocalityId, toLocalityId, vehicleTypeId])
+}
+
+// ==================== VEHICLE MANAGEMENT ====================
+
+model Vehicle {
+  id                Int      @id @default(autoincrement())
+  licensePlate      String   @unique
+  vehicleTypeId     Int
+  operatorId        Int
+  routeId           Int
+  status            VehicleStatus @default(AVAILABLE)
+  latitude          Float?
+  longitude         Float?
+  lastLocationUpdate DateTime?
+  capacity          Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  vehicleType       VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  operator          User @relation(fields: [operatorId], references: [id])
+  route             Route @relation(fields: [routeId], references: [id])
+  
+  trips             Trip[]
+  locationHistory   VehicleLocation[]
+
+  @@index([status])
+  @@index([operatorId])
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_TRANSIT
+  MAINTENANCE
+  INACTIVE
+}
+
+model VehicleLocation {
+  id        Int      @id @default(autoincrement())
+  vehicleId Int
+  latitude  Float
+  longitude Float
+  speed     Float?
+  accuracy  Float?
+  timestamp DateTime @default(now())
+
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([timestamp])
+}
+
+// ==================== BOOKING & TRIPS ====================
+
+model Trip {
+  id                Int      @id @default(autoincrement())
+  routeId           Int
+  vehicleId         Int
+  departureTime     DateTime
+  estimatedArrival  DateTime
+  actualArrival     DateTime?
+  status            TripStatus @default(SCHEDULED)
+  occupiedSeats     Int @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  route             Route @relation(fields: [routeId], references: [id])
+  vehicle           Vehicle @relation(fields: [vehicleId], references: [id])
+
+  bookings          Booking[]
+  trackingUpdates   TripTracking[]
+
+  @@index([status])
+  @@index([departureTime])
+}
+
+enum TripStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+  DELAYED
+}
+
+model Booking {
+  id                Int      @id @default(autoincrement())
+  tripId            Int
+  passengerId       Int
+  fareId            Int
+  seatNumber        String?
+  status            BookingStatus @default(CONFIRMED)
+  bookingReference  String   @unique
+  totalPrice        Float
+  paymentStatus     PaymentStatus @default(PENDING)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  trip              Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passenger         User @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+  fare              Fare @relation(fields: [fareId], references: [id], onDelete: Cascade)
+
+  payment           Payment?
+  notifications     Notification[]
+
+  @@unique([tripId, seatNumber])
+  @@index([passengerId])
+  @@index([status])
+  @@index([paymentStatus])
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// ==================== PAYMENTS ====================
+
+model Payment {
+  id                Int      @id @default(autoincrement())
+  bookingId         Int      @unique
+  userId            Int
+  amount            Float
+  currency          String   @default("GMD")
+  paymentMethod     PaymentMethod
+  transactionId     String   @unique
+  status            PaymentStatus @default(PENDING)
+  provider          PaymentProvider @default(STRIPE)
+  metaData          String?  // JSON
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  booking           Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum PaymentMethod {
+  CARD
+  MOBILE_MONEY
+  BANK_TRANSFER
+  WALLET
+}
+
+enum PaymentProvider {
+  STRIPE
+  ORANGE_MONEY
+  WAVE
+  MODEM_PAY
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  bookingId         Int?
+  type              NotificationType
+  title             String
+  message           String
+  data              String?  // JSON
+  isRead            Boolean  @default(false)
+  readAt            DateTime?
+  createdAt         DateTime @default(now())
+
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking           Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMATION
+  BOOKING_CANCELLED
+  TRIP_DEPARTURE
+  TRIP_DELAYED
+  TRIP_ARRIVED
+  PAYMENT_CONFIRMED
+  PAYMENT_FAILED
+  FARE_UPDATE
+  SYSTEM_ALERT
+}
+
+// ==================== ADMIN DASHBOARD ====================
+
+model AdminDashboard {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @unique
+  totalRevenue      Float    @default(0)
+  totalBookings     Int      @default(0)
+  totalTrips        Int      @default(0)
+  activePassengers  Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DailyStatistics {
+  id                Int      @id @default(autoincrement())
+  date              DateTime @unique
+  totalRevenue      Float    @default(0)
+  totalBookings     Int      @default(0)
+  totalTrips        Int      @default(0)
+  activeVehicles    Int      @default(0)
+  completedTrips    Int      @default(0)
+  cancelledTrips    Int      @default(0)
+  avgOccupancy      Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ==================== FARE MANAGEMENT ====================
+
+model PriceHistory {
+  id                Int      @id @default(autoincrement())
+  fareId            Int
+  previousPrice     Float
+  newPrice          Float
+  reason            String?
+  changedBy         Int?
+  createdAt         DateTime @default(now())
+
+  fare              Fare @relation(fields: [fareId], references: [id], onDelete: Cascade)
+}
+
+// ==================== AUDIT LOG ====================
+
+model AuditLog {
+  id                Int      @id @default(autoincrement())
+  userId            Int?
+  action            String
+  entity            String
+  entityId          Int?
+  changes           String?  // JSON
+  ipAddress         String?
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
