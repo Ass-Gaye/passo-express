@@ -38,9 +38,9 @@ export default function AuthContext() {
       if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
         navigate('/admin/dashboard');
       } else if (role === 'OPERATOR' || role === 'DRIVER') {
-        navigate('/operator/dashboard');
+        navigate('/dashboard');
       } else {
-        navigate('/bookings');
+        navigate('/search-trips');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Authentication failed');

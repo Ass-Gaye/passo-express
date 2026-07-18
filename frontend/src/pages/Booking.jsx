@@ -37,11 +37,18 @@ export default function BookingPage() {
 
     try {
       const token = localStorage.getItem('token');
+      const selectedFareId = trip.route?.fares?.[0]?.id || trip.route?.fare?.id;
+
+      if (!selectedFareId) {
+        setError('No fare is available for this route yet.');
+        return;
+      }
+
       const response = await axios.post(
         `${API_URL}/api/bookings`,
         {
           tripId: parseInt(tripId),
-          fareId: trip.route.fares[0]?.id,
+          fareId: selectedFareId,
           seatNumber: selectedSeat || null,
         },
         {
@@ -77,7 +84,7 @@ export default function BookingPage() {
   }
 
   const availableSeats = (trip.vehicle?.capacity || 0) - (trip.bookings?.length || 0);
-  const farePrice = trip.route?.fares?.[0]?.price || 0;
+  const farePrice = trip.route?.fares?.[0]?.price || trip.route?.fare?.price || 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">

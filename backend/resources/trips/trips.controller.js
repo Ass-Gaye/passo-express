@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../../config/prisma.js');
 
 // Create Trip
 const createTrip = async (req, res) => {
@@ -68,6 +66,48 @@ const getAvailableTrips = async (req, res) => {
   }
 };
 
+// Get Trip By ID
+const getTripById = async (req, res) => {
+  try {
+    const tripId = parseInt(req.params.tripId, 10);
+
+    const trip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      include: {
+        route: { include: { fromLocality: true, toLocality: true, vehicleType: true } },
+        vehicle: true,
+        bookings: {
+          where: { status: { in: ['CONFIRMED', 'COMPLETED'] } },
+        },
+      },
+    });
+
+    if (!trip) {
+      return res.status(404).json({ message: 'Trip not found' });
+    }
+
+    const fare = await prisma.fare.findFirst({
+      where: {
+        fromLocalityId: trip.route.fromLocalityId,
+        toLocalityId: trip.route.toLocalityId,
+        vehicleTypeId: trip.route.vehicleTypeId,
+        isActive: true,
+      },
+    });
+
+    res.status(200).json({
+      ...trip,
+      route: {
+        ...trip.route,
+        fares: fare ? [fare] : [],
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching trip:', error);
+    res.status(500).json({ message: 'Error fetching trip', error: error.message });
+  }
+};
+
 // Update Trip Status
 const updateTripStatus = async (req, res) => {
   try {
@@ -113,5 +153,6 @@ const updateTripStatus = async (req, res) => {
 module.exports = {
   createTrip,
   getAvailableTrips,
+  getTripById,
   updateTripStatus,
 };

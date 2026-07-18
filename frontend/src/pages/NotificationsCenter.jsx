@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import { Bell, X, Mail } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -11,6 +12,8 @@ export default function NotificationsCenter() {
   const [error, setError] = useState('');
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
+  const socketRef = useRef(null);
+
   useEffect(() => {
     fetchNotifications();
     fetchUnreadCount();
@@ -19,14 +22,48 @@ export default function NotificationsCenter() {
       fetchNotifications();
       fetchUnreadCount();
     }, 10000);
+
     return () => clearInterval(interval);
   }, [showUnreadOnly]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const socket = io(API_URL, {
+      transports: ['websocket', 'polling'],
+    });
+
+    socket.on('connect', async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        socket.emit('join-user-notifications', response.data.id);
+      } catch (error) {
+        console.error('Failed to join notification room', error);
+      }
+    });
+
+    socket.on('notification', (notification) => {
+      setNotifications((prev) => [notification, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+    });
+
+    socketRef.current = socket;
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, []);
 
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem('token');
+      const queryString = showUnreadOnly ? '?isRead=false' : '';
       const response = await axios.get(
-        `${API_URL}/api/notifications?isRead=${showUnreadOnly ? 'false' : ''}`,
+        `${API_URL}/api/notifications${queryString}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setNotifications(response.data.notifications);

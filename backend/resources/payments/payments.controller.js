@@ -1,7 +1,10 @@
-const { PrismaClient } = require('@prisma/client');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const prisma = require('../../config/prisma.js');
 
-const prisma = new PrismaClient();
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+}
+
 
 // Create Payment Intent
 const createPaymentIntent = async (req, res) => {
@@ -27,17 +30,22 @@ const createPaymentIntent = async (req, res) => {
       return res.status(400).json({ message: 'Payment already completed' });
     }
 
-    // Create Stripe payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(booking.totalPrice * 100), // Convert to cents
-      currency: 'usd', // Change to local currency
-      metadata: {
-        bookingId: booking.id,
-        bookingReference: booking.bookingReference,
-        userId: userId,
-      },
-      description: `Payment for booking ${booking.bookingReference}`,
-    });
+    const useMockPayment = !stripe;
+
+    const paymentIntentId = useMockPayment
+      ? `mock-${Date.now()}`
+      : (await stripe.paymentIntents.create({
+          amount: Math.round(booking.totalPrice * 100),
+          currency: 'usd',
+          metadata: {
+            bookingId: booking.id,
+            bookingReference: booking.bookingReference,
+            userId,
+          },
+          description: `Payment for booking ${booking.bookingReference}`,
+        })).id;
+
+    const clientSecret = useMockPayment ? 'mock-client-secret' : 'stripe-client-secret';
 
     // Create payment record
     const payment = await prisma.payment.create({
@@ -47,7 +55,7 @@ const createPaymentIntent = async (req, res) => {
         amount: booking.totalPrice,
         currency: 'GMD',
         paymentMethod,
-        transactionId: paymentIntent.id,
+        transactionId: paymentIntentId,
         status: 'PENDING',
         provider: 'STRIPE',
       },
@@ -56,7 +64,7 @@ const createPaymentIntent = async (req, res) => {
     res.status(201).json({
       message: 'Payment intent created',
       payment,
-      clientSecret: paymentIntent.client_secret,
+      clientSecret,
     });
   } catch (error) {
     console.error('Error creating payment:', error);
@@ -84,10 +92,13 @@ const confirmPayment = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
-    // Verify with Stripe
-    const paymentIntent = await stripe.paymentIntents.retrieve(transactionId);
+    if (stripe) {
+      const paymentIntent = await stripe.paymentIntents.retrieve(transactionId);
 
-    if (paymentIntent.status !== 'succeeded') {
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: 'Payment failed' });
+      }
+    } else if (!transactionId) {
       return res.status(400).json({ message: 'Payment failed' });
     }
 

@@ -23,7 +23,9 @@ module.exports = prisma;
 
 // npm uninstall prisma @prisma/client
 
-// npm install prisma@6.15.0 @prisma/client@6.15.0
+// npm install  prisma@6.15.0 --dev-save
+
+//npm install  @prisma/client@6.15.0
 
 
 

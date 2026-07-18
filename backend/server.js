@@ -44,6 +44,12 @@ io.on('connection', (socket) => {
     io.to(`trip-${data.tripId}`).emit('trip-status-update', data);
   });
 
+  // Join user notification room
+  socket.on('join-user-notifications', (userId) => {
+    socket.join(`user-${userId}`);
+    console.log(`Client joined user-${userId}`);
+  });
+
   // Broadcast notification
   socket.on('send-notification', (data) => {
     io.to(`user-${data.userId}`).emit('notification', data);

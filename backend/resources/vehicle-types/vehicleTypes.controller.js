@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../../config/prisma.js');
 
 // Update Vehicle Location (GPS Tracking)
 const updateVehicleLocation = async (req, res) => {
@@ -90,8 +88,23 @@ const getVehicleStatus = async (req, res) => {
   }
 };
 
+// Get Vehicle Types
+const getVehicleTypes = async (req, res) => {
+  try {
+    const vehicleTypes = await prisma.vehicleType.findMany({
+      orderBy: { name: 'asc' },
+    });
+
+    res.status(200).json(vehicleTypes);
+  } catch (error) {
+    console.error('Error fetching vehicle types:', error);
+    res.status(500).json({ message: 'Error fetching vehicle types', error: error.message });
+  }
+};
+
 module.exports = {
   updateVehicleLocation,
   getLocationHistory,
   getVehicleStatus,
+  getVehicleTypes,
 };

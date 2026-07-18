@@ -34,7 +34,8 @@ const EditFare = () => {
     fromLocalityId: '',
     toLocalityId: '',
     vehicleTypeId: '',
-    price: ''
+    price: '',
+    reason: ''
   })
 
 
@@ -93,7 +94,8 @@ const EditFare = () => {
         fromLocalityId: Number(formData.fromLocalityId),
         toLocalityId: Number(formData.toLocalityId),
         vehicleTypeId: Number(formData.vehicleTypeId),
-        price: Number(formData.price)
+        price: Number(formData.price),
+        reason: formData.reason,
       })
 
       alert('Fare updated successfully')
@@ -194,6 +196,13 @@ const EditFare = () => {
           className="border w-full p-3 rounded"
         />
 
+        <textarea
+          name="reason"
+          value={formData.reason}
+          onChange={handleChange}
+          placeholder="Reason for fare update (optional)"
+          className="border w-full p-3 rounded h-24"
+        />
 
         <button
           className="

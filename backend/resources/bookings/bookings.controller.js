@@ -1,13 +1,14 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../../config/prisma.js');
 const { v4: uuidv4 } = require('uuid');
 
-const prisma = new PrismaClient();
 
 // Create Booking
 const createBooking = async (req, res) => {
   try {
     const { tripId, fareId, seatNumber } = req.body;
     const passengerId = req.user.id;
+
+    let resolvedFareId = fareId;
 
     // Check if trip exists
     const trip = await prisma.trip.findUnique({
@@ -34,9 +35,22 @@ const createBooking = async (req, res) => {
       }
     }
 
+    if (!resolvedFareId) {
+      const routeFare = await prisma.fare.findFirst({
+        where: {
+          fromLocalityId: trip.route.fromLocalityId,
+          toLocalityId: trip.route.toLocalityId,
+          vehicleTypeId: trip.route.vehicleTypeId,
+          isActive: true,
+        },
+      });
+
+      resolvedFareId = routeFare?.id;
+    }
+
     // Get fare details
     const fare = await prisma.fare.findUnique({
-      where: { id: fareId },
+      where: { id: resolvedFareId },
     });
 
     if (!fare) {
@@ -51,7 +65,7 @@ const createBooking = async (req, res) => {
       data: {
         tripId,
         passengerId,
-        fareId,
+        fareId: resolvedFareId,
         seatNumber,
         totalPrice,
         bookingReference,

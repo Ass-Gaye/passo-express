@@ -21,5 +21,6 @@ const updateTripValidation = [
 router.post('/', verifyToken, checkRole(['ADMIN', 'OPERATOR']), createTripValidation, tripsController.createTrip);
 router.get('/available', verifyToken, tripsController.getAvailableTrips);
 router.put('/:tripId/status', verifyToken, checkRole(['ADMIN', 'OPERATOR']), updateTripValidation, tripsController.updateTripStatus);
+router.get('/:tripId', tripsController.getTripById);
 
 module.exports = router;

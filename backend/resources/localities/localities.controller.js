@@ -49,7 +49,7 @@ const createLocality = async (req, res) => {
 
 const updateLocality = async (req, res) => {
     try {
-        const locality = await localityDB.update(req.params.id, req.bod);
+        const locality = await localityDB.update(req.params.id, req.body);
 
         res.json(locality);
 
@@ -64,11 +64,14 @@ const deleteLocality = async (req, res) => {
     try {
         const locality = await localityDB.remove(req.params.id);
 
-        res.satus(200).json({
+        res.status(200).json({
             message: 'Locality deleted Successfullty'
         })
 
     } catch (error) {
+        res.status(500).json({
+            message: error.message
+        });
         
     }  
 }

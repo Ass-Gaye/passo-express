@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MapPin, Users, Calendar, DollarSign, Loader } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function SearchTrips() {
+  const navigate = useNavigate();
   const [fromLocality, setFromLocality] = useState('');
   const [toLocality, setToLocality] = useState('');
   const [date, setDate] = useState('');
@@ -179,6 +181,7 @@ export default function SearchTrips() {
                         </p>
                       </div>
                       <button
+                        onClick={() => navigate(`/booking/${trip.id}`)}
                         disabled={availableSeats <= 0}
                         className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >

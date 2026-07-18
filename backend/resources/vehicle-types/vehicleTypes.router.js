@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const vehiclesController = require('./vehicles.controller');
+const vehiclesController = require('./vehicleTypes.controller');
 const { verifyToken, checkRole } = require('../../middleware/auth.middleware');
 
 const router = express.Router();
@@ -15,6 +15,7 @@ const updateLocationValidation = [
 ];
 
 // Routes
+router.get('/', vehiclesController.getVehicleTypes);
 router.post('/location/update', verifyToken, checkRole(['DRIVER', 'OPERATOR']), updateLocationValidation, vehiclesController.updateVehicleLocation);
 router.get('/:vehicleId/history', verifyToken, vehiclesController.getLocationHistory);
 router.get('/:vehicleId/status', verifyToken, vehiclesController.getVehicleStatus);
