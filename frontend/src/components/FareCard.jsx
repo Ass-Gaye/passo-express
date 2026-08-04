@@ -8,6 +8,8 @@ import { deleteFare } from '../services/fares.service'
 
 
 const FareCard = ({ fare, refreshFares }) => {
+  const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
+  const canManageFare = ['ADMIN', 'SUPER_ADMIN'].includes(storedUser?.role)
 
   const handleDelete = async () => {
 
@@ -80,40 +82,33 @@ const FareCard = ({ fare, refreshFares }) => {
 
       {/* ACTION BUTTONS */}
 
-      <div className="flex gap-3 mt-6">
+      {canManageFare && (
+        <div className="flex gap-3 mt-6">
+          <Link
+            to={`/edit-fare/${fare.id}`}
+            className="
+              flex items-center gap-2
+              bg-blue-600 text-white
+              px-4 py-2 rounded-lg
+            "
+          >
+            <Pencil size={18} />
+            Edit
+          </Link>
 
-        <Link
-          to={`/edit-fare/${fare.id}`}
-          className="
-            flex items-center gap-2
-            bg-blue-600 text-white
-            px-4 py-2 rounded-lg
-          "
-        >
-
-          <Pencil size={18} />
-
-          Edit
-
-        </Link>
-
-
-        <button
-          onClick={handleDelete}
-          className="
-            flex items-center gap-2
-            bg-red-600 text-white
-            px-4 py-2 rounded-lg
-          "
-        >
-
-          <Trash2 size={18} />
-
-          Delete
-
-        </button>
-
-      </div>
+          <button
+            onClick={handleDelete}
+            className="
+              flex items-center gap-2
+              bg-red-600 text-white
+              px-4 py-2 rounded-lg
+            "
+          >
+            <Trash2 size={18} />
+            Delete
+          </button>
+        </div>
+      )}
 
     </motion.div>
   )

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MapPin, Users, Calendar, DollarSign, Loader } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function SearchTrips() {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ export default function SearchTrips() {
   const [localities, setLocalities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Fetch localities on mount
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function SearchTrips() {
   const handleSearch = async (e) => {
     e.preventDefault();
     setError('');
+    setHasSearched(true);
     setLoading(true);
 
     try {
@@ -136,10 +138,19 @@ export default function SearchTrips() {
             <div className="flex justify-center items-center py-12">
               <Loader className="animate-spin text-blue-600" size={32} />
             </div>
+          ) : !hasSearched ? (
+            <div className="rounded-2xl border border-dashed border-blue-200 bg-white/70 p-10 text-center shadow-sm">
+              <p className="text-lg font-semibold text-gray-800">Find your next trip</p>
+              <p className="mt-2 text-sm text-gray-600">
+                Select a route and date to see available journeys.
+              </p>
+            </div>
           ) : trips.length > 0 ? (
             trips.map((trip) => {
               const availableSeats =
-                (trip.vehicle?.capacity || 0) - (trip.bookings?.length || 0);
+                trip.availableSeats !== null && trip.availableSeats !== undefined
+                  ? trip.availableSeats
+                  : Math.max((trip.vehicle?.capacity || 0) - (trip.bookings?.length || 0), 0);
               return (
                 <div
                   key={trip.id}
@@ -167,7 +178,7 @@ export default function SearchTrips() {
                         <div>
                           <p className="text-gray-500 text-sm">Available Seats</p>
                           <p className="text-lg font-semibold text-gray-800">
-                            {availableSeats > 0 ? availableSeats : 'Full'}
+                            {trip.availableSeats === null ? 'Available' : availableSeats > 0 ? availableSeats : 'Full'}
                           </p>
                         </div>
                       </div>
@@ -193,8 +204,11 @@ export default function SearchTrips() {
               );
             })
           ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-600">No trips found. Try different search criteria.</p>
+            <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center shadow-sm">
+              <p className="text-lg font-semibold text-gray-800">No trips available</p>
+              <p className="mt-2 text-sm text-gray-600">
+                There are no journeys matching your route and date yet. Try a different date or route.
+              </p>
             </div>
           )}
         </div>

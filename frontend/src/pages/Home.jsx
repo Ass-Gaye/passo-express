@@ -1,7 +1,44 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import MapView from '../components/MapView'
+import { getFares } from '../services/fares.service'
+import { getLocalities } from '../services/localities.service'
+import { getVehicleTypes } from '../services/vehicleTypes.service'
 
 const Home = () => {
+  const [stats, setStats] = useState({ routeCount: 0, localityCount: 0, vehicleTypeCount: 0 })
+  const [featuredRoutes, setFeaturedRoutes] = useState([])
+
+  useEffect(() => {
+    const loadHomeData = async () => {
+      try {
+        const [faresData, localitiesData, vehicleTypesData] = await Promise.all([
+          getFares(),
+          getLocalities(),
+          getVehicleTypes(),
+        ])
+
+        const routes = (faresData || [])
+          .slice(0, 3)
+          .map((fare) => ({
+            from: fare.fromLocality?.name || 'Unknown',
+            to: fare.toLocality?.name || 'Unknown',
+            vehicleType: fare.vehicleType?.name || 'Vehicle',
+          }))
+
+        setFeaturedRoutes(routes)
+        setStats({
+          routeCount: faresData?.length || 0,
+          localityCount: localitiesData?.length || 0,
+          vehicleTypeCount: vehicleTypesData?.length || 0,
+        })
+      } catch (error) {
+        console.error('Failed to load homepage data', error)
+      }
+    }
+
+    loadHomeData()
+  }, [])
 
   return (
 
@@ -60,11 +97,11 @@ const Home = () => {
           <div className="bg-white p-8 rounded-2xl shadow-sm">
 
             <h2 className="text-4xl font-bold">
-              50+
+              {stats.routeCount}
             </h2>
 
             <p className="text-gray-600 mt-2">
-              Available Routes
+              Live Fares
             </p>
 
           </div>
@@ -73,7 +110,7 @@ const Home = () => {
           <div className="bg-white p-8 rounded-2xl shadow-sm">
 
             <h2 className="text-4xl font-bold">
-              10+
+              {stats.vehicleTypeCount}
             </h2>
 
             <p className="text-gray-600 mt-2">
@@ -86,11 +123,11 @@ const Home = () => {
           <div className="bg-white p-8 rounded-2xl shadow-sm">
 
             <h2 className="text-4xl font-bold">
-              1000+
+              {stats.localityCount}
             </h2>
 
             <p className="text-gray-600 mt-2">
-              Daily Users
+              Registered Localities
             </p>
 
           </div>
@@ -122,45 +159,22 @@ const Home = () => {
 
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-
-            <h3 className="text-2xl font-semibold">
-              Serekunda → Banjul
-            </h3>
-
-            <p className="mt-3 text-gray-600">
-              Fastest and busiest route in the country.
-            </p>
-
-          </div>
-
-
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-
-            <h3 className="text-2xl font-semibold">
-              Brikama → Serekunda
-            </h3>
-
-            <p className="mt-3 text-gray-600">
-              Daily commercial transport route.
-            </p>
-
-          </div>
-
-
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-
-            <h3 className="text-2xl font-semibold">
-              Bakau → Banjul
-            </h3>
-
-            <p className="mt-3 text-gray-600">
-              Affordable urban commuting route.
-            </p>
-
-          </div>
-
+          {featuredRoutes.length > 0 ? (
+            featuredRoutes.map((route, index) => (
+              <div key={`${route.from}-${route.to}-${index}`} className="bg-white rounded-2xl p-6 shadow-sm">
+                <h3 className="text-2xl font-semibold">
+                  {route.from} → {route.to}
+                </h3>
+                <p className="mt-3 text-gray-600">
+                  {route.vehicleType} fare available for this route.
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="md:col-span-3 text-center text-gray-500">
+              No featured routes available yet.
+            </div>
+          )}
         </div>
 
       </section>

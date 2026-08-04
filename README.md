@@ -204,6 +204,80 @@ npm run dev
 
 Frontend runs on: `http://localhost:5173`
 
+## Implementation Roadmap
+
+This step-by-step roadmap is designed to move the project forward reliably and create a production-ready transport booking system.
+
+### Step 1: Setup and baseline validation
+1. Install backend dependencies and run `npm install` in `backend`.
+2. Configure `.env` with `DATABASE_URL`, `JWT_SECRET`, email, and Stripe keys.
+3. Run Prisma migrations: `npx prisma migrate dev --name init`.
+4. Seed initial localities, vehicle types, and fares using `node prisma/seed.js`.
+5. Start the backend and verify `/health` returns `status: OK`.
+
+### Step 2: Ensure authentication works end to end
+1. Confirm `POST /api/auth/register` creates users and returns a JWT.
+2. Confirm `POST /api/auth/login` validates password and returns token and user data.
+3. Ensure the frontend stores `token` and `user` in `localStorage` in `frontend/src/pages/Auth.jsx`.
+4. Verify protected routes use `frontend/src/components/ProtectedRoute.jsx` and redirect unauthenticated users to `/auth`.
+5. Confirm the auth redirect preserves the original target route for booking flows.
+
+### Step 3: Build trip search and availability
+1. Implement `/api/trips/available` in `backend/resources/trips/trips.controller.js`.
+2. Query trips by `fromLocalityId`, `toLocalityId`, and `date`.
+3. Include `vehicle`, `route`, and confirmed bookings to calculate available seats.
+4. Return only trips with open seats to the frontend.
+5. Wire the React search page in `frontend/src/pages/SearchTrips.jsx` to show available trips and seat counts.
+
+### Step 4: Bookings and seat management
+1. Add `POST /api/bookings` in `backend/resources/bookings/bookings.controller.js`.
+2. Validate authenticated passengers using `verifyToken` and `checkUserStatus`.
+3. Check trip capacity and prevent booking if the trip is full.
+4. Use Prisma transaction logic to create booking and increment `Trip.occupiedSeats`.
+5. Build the booking page in `frontend/src/pages/Booking.jsx` and disable booking when seats are unavailable.
+
+### Step 5: Payment and booking confirmation
+1. Implement payment intent creation in `backend/resources/payments/payments.controller.js`.
+2. Confirm payment endpoint updates booking and payment status.
+3. Redirect users after successful booking to `frontend/src/pages/Payment.jsx`.
+4. Store booking confirmation and payment history for passengers.
+5. Add notification creation for booking confirmation events.
+
+### Step 6: Passenger dashboard and management
+1. Build `/api/bookings` GET for passenger booking history.
+2. Add cancellation via `DELETE /api/bookings/:bookingId`.
+3. Implement booking filters and pagination in the `UserBookings` page.
+4. Use `frontend/src/pages/UserBookings.jsx` to display booking status and action buttons.
+5. Keep booking and payment records linked for easy auditing.
+
+### Step 7: Admin and operator tools
+1. Expose admin routes in `backend/resources/admin/admin.router.js`.
+2. Add trip creation and status updates in `backend/resources/trips/trips.router.js`.
+3. Build admin UI pages for fares, localities, vehicle types, and trips.
+4. Add role-based access in `frontend/src/App.jsx` and `ProtectedRoute.jsx`.
+5. Create admin / operator pages to update trip status and monitor bookings.
+
+### Step 8: Notifications and real-time updates
+1. Create notification records in `backend/resources/notifications/notifications.controller.js`.
+2. Add unread counts and read/unread endpoints.
+3. Configure Socket.IO on the backend and frontend for real-time updates.
+4. Surface booking confirmations and trip status changes in `frontend/src/pages/NotificationsCenter.jsx`.
+5. Show active vehicle location updates on the frontend map if available.
+
+### Step 9: Advanced transport improvements
+1. Add driver assignment logic to match trips with drivers and vehicles.
+2. Introduce capacity/queue management for busy routes.
+3. Implement peak-hour pricing and fare update notifications.
+4. Add route optimization support for better scheduling.
+5. Expand analytics and reporting for admin usage.
+
+### Step 10: Test, deploy, and monitor
+1. Add unit and integration tests for auth, booking, trips, and payments.
+2. Set up CI/CD with linting and test execution.
+3. Harden production config and environment variable management.
+4. Add logging, health checks, and monitoring alerts.
+5. Prepare deployment documentation and release checklists.
+
 ## Real-Time Features
 
 ### WebSocket Events

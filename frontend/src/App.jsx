@@ -6,6 +6,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Fares from "./pages/Fares";
 import CreateFare from "./pages/CreateFare";
+import CreateTrip from "./pages/CreateTrip";
+import ManageTrips from "./pages/ManageTrips";
 import Localities from "./pages/Localities";
 import EditFare from './pages/EditFare';
 import Dashboard from './pages/Dashboard';
@@ -32,6 +34,11 @@ const App = () => {
           <Route path="/create-fare" element={<CreateFare />} />
           <Route path="/edit-fare/:id" element={<EditFare />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'OPERATOR']} />}>
+          <Route path="/create-trip" element={<CreateTrip />} />
+          <Route path="/manage-trips" element={<ManageTrips />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'OPERATOR', 'DRIVER']} />}>

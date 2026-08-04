@@ -203,6 +203,21 @@ model Trip {
   @@index([departureTime])
 }
 
+model TripTracking {
+  id         Int      @id @default(autoincrement())
+  tripId     Int
+  latitude   Float?
+  longitude  Float?
+  speed      Float?
+  accuracy   Float?
+  recordedAt DateTime @default(now())
+
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([recordedAt])
+}
+
 enum TripStatus {
   SCHEDULED
   ONGOING

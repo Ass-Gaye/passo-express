@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function AuthContext() {
   const [email, setEmail] = useState('');
@@ -15,6 +15,7 @@ export default function AuthContext() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,15 +34,16 @@ export default function AuthContext() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
-      // Redirect based on role
+      // Redirect based on intent or role
       const role = response.data.user.role;
-      if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-        navigate('/admin/dashboard');
-      } else if (role === 'OPERATOR' || role === 'DRIVER') {
-        navigate('/dashboard');
-      } else {
-        navigate('/search-trips');
-      }
+      const redirectTo = location.state?.from?.pathname ||
+        (role === 'ADMIN' || role === 'SUPER_ADMIN'
+          ? '/admin/dashboard'
+          : role === 'OPERATOR' || role === 'DRIVER'
+          ? '/dashboard'
+          : '/search-trips');
+
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Authentication failed');
     } finally {

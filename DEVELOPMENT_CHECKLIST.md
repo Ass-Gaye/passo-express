@@ -106,7 +106,7 @@
 - [x] Fare update notifications
 - [ ] Driver assignment algorithm
 - [ ] Queue management system
-- [ ] Capacity management
+- [x] Capacity management
 - [ ] Peak hour pricing
 
 ### Medium Priority

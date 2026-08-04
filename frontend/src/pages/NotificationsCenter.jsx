@@ -3,7 +3,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { Bell, X, Mail } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function NotificationsCenter() {
   const [notifications, setNotifications] = useState([]);
@@ -47,7 +47,13 @@ export default function NotificationsCenter() {
 
     socket.on('notification', (notification) => {
       setNotifications((prev) => [notification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
+      setUnreadCount((prev) => {
+        const next = prev + 1;
+        try {
+          localStorage.setItem('unreadNotifications', String(next));
+        } catch (e) {}
+        return next;
+      });
     });
 
     socketRef.current = socket;
@@ -81,10 +87,20 @@ export default function NotificationsCenter() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUnreadCount(response.data.unreadCount);
+      try {
+        localStorage.setItem('unreadNotifications', String(response.data.unreadCount || 0));
+      } catch (e) {}
     } catch (err) {
       console.error('Error fetching unread count:', err);
     }
   };
+
+  // keep localStorage in sync for other UI components (e.g., Navbar)
+  useEffect(() => {
+    try {
+      localStorage.setItem('unreadNotifications', String(unreadCount || 0));
+    } catch (e) {}
+  }, [unreadCount]);
 
   const markAsRead = async (notificationId) => {
     try {

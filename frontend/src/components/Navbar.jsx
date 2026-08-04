@@ -24,6 +24,7 @@ const getStoredUser = () => {
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState(getStoredUser())
+  const [unreadCount, setUnreadCount] = useState(Number(localStorage.getItem('unreadNotifications') || '0'))
   const navigate = useNavigate()
 
   const { darkMode, toggleTheme } = useTheme()
@@ -31,7 +32,14 @@ const Navbar = () => {
   useEffect(() => {
     const syncUser = () => setUser(getStoredUser())
     window.addEventListener('storage', syncUser)
-    return () => window.removeEventListener('storage', syncUser)
+    const syncUnread = (e) => {
+      if (e.key === 'unreadNotifications') setUnreadCount(Number(e.newValue || '0'))
+    }
+    window.addEventListener('storage', syncUnread)
+    return () => {
+      window.removeEventListener('storage', syncUser)
+      window.removeEventListener('storage', syncUnread)
+    }
   }, [])
 
   const handleLogout = () => {
@@ -42,6 +50,7 @@ const Navbar = () => {
   }
 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role)
+  const canCreateTrip = ['ADMIN', 'SUPER_ADMIN', 'OPERATOR'].includes(user?.role)
   const isOperator = ['ADMIN', 'SUPER_ADMIN', 'OPERATOR', 'DRIVER'].includes(user?.role)
 
   return (
@@ -62,14 +71,26 @@ const Navbar = () => {
               </>
             )}
 
+            {canCreateTrip && (
+              <>
+                <Link to="/create-trip" className="dark:text-white hover:text-blue-600 transition">Create Trip</Link>
+                <Link to="/manage-trips" className="dark:text-white hover:text-blue-600 transition">Manage Trips</Link>
+              </>
+            )}
+
             {isOperator && <Link to="/dashboard" className="dark:text-white hover:text-blue-600 transition">Dashboard</Link>}
 
             {user && (
               <>
                 <Link to="/search-trips" className="dark:text-white hover:text-blue-600 transition">Book Trip</Link>
                 <Link to="/my-bookings" className="dark:text-white hover:text-blue-600 transition">My Bookings</Link>
-                <Link to="/notifications" className="dark:text-white hover:text-blue-600 transition">
+                <Link to="/notifications" className="dark:text-white hover:text-blue-600 transition relative">
                   <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1.5 py-0.5">
+                      {unreadCount}
+                    </span>
+                  )}
                 </Link>
               </>
             )}
@@ -105,13 +126,20 @@ const Navbar = () => {
               </>
             )}
 
+            {canCreateTrip && (
+              <>
+                <Link to="/create-trip" className="block dark:text-white hover:text-blue-600 transition">Create Trip</Link>
+                <Link to="/manage-trips" className="block dark:text-white hover:text-blue-600 transition">Manage Trips</Link>
+              </>
+            )}
+
             {isOperator && <Link to="/dashboard" className="block dark:text-white hover:text-blue-600 transition">Dashboard</Link>}
 
             {user ? (
               <>
                 <Link to="/search-trips" className="block dark:text-white hover:text-blue-600 transition">Book Trip</Link>
                 <Link to="/my-bookings" className="block dark:text-white hover:text-blue-600 transition">My Bookings</Link>
-                <Link to="/notifications" className="block dark:text-white hover:text-blue-600 transition">Notifications</Link>
+                <Link to="/notifications" className="block dark:text-white hover:text-blue-600 transition">Notifications {unreadCount > 0 && (<span className="ml-2 bg-red-600 text-white text-xs rounded-full px-2 py-0.5">{unreadCount}</span>)}</Link>
                 <button onClick={handleLogout} className="block text-left dark:text-white hover:text-red-600 transition">Logout</button>
               </>
             ) : (

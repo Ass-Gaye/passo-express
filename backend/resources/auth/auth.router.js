@@ -10,7 +10,12 @@ const registerValidation = [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('name').trim().notEmpty().withMessage('Name is required'),
-  body('phone').optional().isMobilePhone(),
+  body('phone')
+    .optional({ checkFalsy: true })
+    .isString()
+    .trim()
+    .isLength({ min: 7 })
+    .withMessage('Phone must be at least 7 characters'),
 ];
 
 const loginValidation = [

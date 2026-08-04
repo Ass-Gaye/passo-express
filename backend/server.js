@@ -6,6 +6,14 @@ const socketIO = require('socket.io');
 
 const PORT = process.env.PORT || 3000;
 const SOCKET_PORT = process.env.SOCKET_IO_PORT || 3001;
+const isPortExplicitlySet = process.env.PORT !== undefined;
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+].filter(Boolean);
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -13,8 +21,9 @@ const server = http.createServer(app);
 // Initialize Socket.IO for real-time updates
 const io = socketIO(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
+    methods: ['GET', 'POST'],
   },
 });
 
@@ -64,9 +73,46 @@ io.on('connection', (socket) => {
 // Attach io to app for use in routes
 app.set('io', io);
 
-// Start server
-server.listen(PORT, () => {
-  console.log(`🚀 PASSO Express API running on port ${PORT}`);
-  console.log(`📡 Socket.IO server ready for real-time updates`);
-  console.log(`🌍 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+// Global exception handlers to prevent the app from crashing silently
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
 });
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+  process.exit(1);
+});
+
+const tryListen = (port, attemptsLeft) => {
+  const onError = (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      const nextPort = port + 1;
+
+      if (!isPortExplicitlySet && attemptsLeft > 0) {
+        console.warn(`Port ${port} is already in use, trying ${nextPort}...`);
+        server.removeListener('error', onError);
+        tryListen(nextPort, attemptsLeft - 1);
+        return;
+      }
+
+      console.error(`Port ${port} is already in use. Please stop the other process or set a different PORT.`);
+      server.removeListener('error', onError);
+      process.exit(1);
+    }
+
+    if (err) {
+      console.error('Server startup error:', err);
+      process.exit(1);
+    }
+  };
+
+  server.once('error', onError);
+  server.listen(port, () => {
+    console.log(`🚀 PASSO Express API running on port ${port}`);
+    console.log(`📡 Socket.IO server ready for real-time updates`);
+    console.log(`🌍 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  });
+};
+
+tryListen(Number(PORT), 6);

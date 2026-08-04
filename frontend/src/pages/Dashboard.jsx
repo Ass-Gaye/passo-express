@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   BarChart,
   Bar,
@@ -17,24 +18,60 @@ import {
   Route
 } from 'lucide-react'
 
+import { getFares } from '../services/fares.service'
+import { getLocalities } from '../services/localities.service'
+import { getVehicleTypes } from '../services/vehicleTypes.service'
 
 const Dashboard = () => {
+  const [stats, setStats] = useState({ fareCount: 0, localityCount: 0, vehicleTypeCount: 0 })
+  const [farePriceData, setFarePriceData] = useState([])
+  const [vehicleDistribution, setVehicleDistribution] = useState([])
 
-  const revenueData = [
-    { month: 'Jan', revenue: 4000 },
-    { month: 'Feb', revenue: 3000 },
-    { month: 'Mar', revenue: 5000 },
-    { month: 'Apr', revenue: 4500 },
-    { month: 'May', revenue: 6000 },
-  ]
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const [faresData, localitiesData, vehicleTypesData] = await Promise.all([
+          getFares(),
+          getLocalities(),
+          getVehicleTypes(),
+        ])
 
+        const groupedByVehicle = faresData.reduce((acc, fare) => {
+          const name = fare.vehicleType?.name || 'Unknown'
+          acc[name] = (acc[name] || 0) + 1
+          return acc
+        }, {})
 
-  const routeData = [
-    { name: 'Taxi', value: 40 },
-    { name: 'Bus', value: 35 },
-    { name: 'Van', value: 25 },
-  ]
+        const priceByVehicle = faresData.reduce((acc, fare) => {
+          const name = fare.vehicleType?.name || 'Unknown'
+          if (!acc[name]) acc[name] = []
+          acc[name].push(fare.price)
+          return acc
+        }, {})
 
+        setStats({
+          fareCount: faresData?.length || 0,
+          localityCount: localitiesData?.length || 0,
+          vehicleTypeCount: vehicleTypesData?.length || 0,
+        })
+
+        setVehicleDistribution(
+          Object.entries(groupedByVehicle).map(([name, value]) => ({ name, value }))
+        )
+
+        setFarePriceData(
+          Object.entries(priceByVehicle).map(([name, prices]) => ({
+            name,
+            averagePrice: Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length),
+          }))
+        )
+      } catch (error) {
+        console.error('Failed to load dashboard data', error)
+      }
+    }
+
+    loadDashboardData()
+  }, [])
 
   return (
 
@@ -66,11 +103,11 @@ const Dashboard = () => {
             <DollarSign className="mb-4 text-green-500" />
 
             <h2 className="text-3xl font-bold dark:text-white">
-              D25,000
+              {stats.fareCount}
             </h2>
 
             <p className="text-gray-500">
-              Total Revenue
+              Active Fare Entries
             </p>
 
           </div>
@@ -81,7 +118,7 @@ const Dashboard = () => {
             <Route className="mb-4 text-blue-500" />
 
             <h2 className="text-3xl font-bold dark:text-white">
-              120
+              {stats.fareCount}
             </h2>
 
             <p className="text-gray-500">
@@ -96,7 +133,7 @@ const Dashboard = () => {
             <MapPin className="mb-4 text-red-500" />
 
             <h2 className="text-3xl font-bold dark:text-white">
-              32
+              {stats.localityCount}
             </h2>
 
             <p className="text-gray-500">
@@ -111,11 +148,11 @@ const Dashboard = () => {
             <Car className="mb-4 text-purple-500" />
 
             <h2 className="text-3xl font-bold dark:text-white">
-              85
+              {stats.vehicleTypeCount}
             </h2>
 
             <p className="text-gray-500">
-              Vehicles
+              Vehicle Types
             </p>
 
           </div>
@@ -132,12 +169,12 @@ const Dashboard = () => {
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow">
 
             <h2 className="text-2xl font-bold mb-6 dark:text-white">
-              Revenue Overview
+              Average Fare by Vehicle Type
             </h2>
 
             <ResponsiveContainer width="100%" height={300}>
 
-              <BarChart data={revenueData}>
+              <BarChart data={farePriceData}>
 
                 <XAxis dataKey="month" />
 
@@ -146,7 +183,7 @@ const Dashboard = () => {
                 <Tooltip />
 
                 <Bar
-                  dataKey="revenue"
+                  dataKey="averagePrice"
                   fill="#2563eb"
                   radius={[8, 8, 0, 0]}
                 />
@@ -163,7 +200,7 @@ const Dashboard = () => {
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow">
 
             <h2 className="text-2xl font-bold mb-6 dark:text-white">
-              Vehicle Distribution
+              Fare Distribution by Vehicle Type
             </h2>
 
             <ResponsiveContainer width="100%" height={300}>
@@ -171,7 +208,7 @@ const Dashboard = () => {
               <PieChart>
 
                 <Pie
-                  data={routeData}
+                  data={vehicleDistribution}
                   dataKey="value"
                   outerRadius={100}
                   label

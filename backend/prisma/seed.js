@@ -3,6 +3,7 @@ require('dotenv').config({
   path: require('path').resolve(__dirname, '../.env'),
 })
 
+const bcrypt = require('bcryptjs')
 const prisma = require('../config/prisma.js')
 
 async function seedLocalities() {
@@ -148,6 +149,165 @@ async function seedFares(localities, vehicleTypes) {
   }
 }
 
+async function seedRoutes(localities, vehicleTypes) {
+  const routes = [
+    {
+      name: 'Banjul to Serrekunda Taxi',
+      fromLocalityId: localities['Banjul'].id,
+      toLocalityId: localities['Serrekunda'].id,
+      vehicleTypeId: vehicleTypes['Taxi'].id,
+      distance: 15,
+      estimatedDuration: 35,
+    },
+    {
+      name: 'Serrekunda to Brikama Gele Gele',
+      fromLocalityId: localities['Serrekunda'].id,
+      toLocalityId: localities['Brikama'].id,
+      vehicleTypeId: vehicleTypes['Gele Gele'].id,
+      distance: 20,
+      estimatedDuration: 40,
+    },
+  ]
+
+  const results = {}
+  for (const route of routes) {
+    const saved = await prisma.route.upsert({
+      where: {
+        fromLocalityId_toLocalityId_vehicleTypeId: {
+          fromLocalityId: route.fromLocalityId,
+          toLocalityId: route.toLocalityId,
+          vehicleTypeId: route.vehicleTypeId,
+        },
+      },
+      update: {
+        name: route.name,
+        distance: route.distance,
+        estimatedDuration: route.estimatedDuration,
+        isActive: true,
+      },
+      create: route,
+    })
+    results[route.name] = saved
+  }
+  return results
+}
+
+async function seedOperatorUser() {
+  const hashedPassword = await bcrypt.hash('Operator123!', 10)
+  const operator = await prisma.user.upsert({
+    where: { email: 'operator@passo.com' },
+    update: {
+      name: 'Route Operator',
+      role: 'OPERATOR',
+      status: 'ACTIVE',
+      password: hashedPassword,
+    },
+    create: {
+      email: 'operator@passo.com',
+      password: hashedPassword,
+      name: 'Route Operator',
+      phone: '2201234567',
+      role: 'OPERATOR',
+      status: 'ACTIVE',
+    },
+  })
+  return operator
+}
+
+async function seedPassengerUser() {
+  const hashedPassword = await bcrypt.hash('Passenger123!', 10)
+  const passenger = await prisma.user.upsert({
+    where: { email: 'passenger@passo.com' },
+    update: {
+      name: 'Test Passenger',
+      role: 'PASSENGER',
+      status: 'ACTIVE',
+      password: hashedPassword,
+    },
+    create: {
+      email: 'passenger@passo.com',
+      password: hashedPassword,
+      name: 'Test Passenger',
+      phone: '2207654321',
+      role: 'PASSENGER',
+      status: 'ACTIVE',
+    },
+  })
+  return passenger
+}
+
+async function seedVehicles(operator, routes) {
+  const vehicles = [
+    {
+      licensePlate: 'GMD-TAXI-01',
+      vehicleTypeId: routes['Banjul to Serrekunda Taxi'].vehicleTypeId,
+      operatorId: operator.id,
+      routeId: routes['Banjul to Serrekunda Taxi'].id,
+      capacity: 4,
+      status: 'AVAILABLE',
+    },
+  ]
+
+  const results = {}
+  for (const vehicle of vehicles) {
+    const saved = await prisma.vehicle.upsert({
+      where: { licensePlate: vehicle.licensePlate },
+      update: {
+        vehicleTypeId: vehicle.vehicleTypeId,
+        operatorId: vehicle.operatorId,
+        routeId: vehicle.routeId,
+        capacity: vehicle.capacity,
+        status: vehicle.status,
+      },
+      create: vehicle,
+    })
+    results[vehicle.licensePlate] = saved
+  }
+  return results
+}
+
+async function seedTrips(routes, vehicles) {
+  const today = new Date()
+  today.setHours(8, 0, 0, 0)
+
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  tomorrow.setHours(9, 0, 0, 0)
+
+  const todayArrival = new Date(today.getTime() + 90 * 60000)
+  const tomorrowArrival = new Date(tomorrow.getTime() + 90 * 60000)
+
+  const trips = [
+    {
+      routeId: routes['Banjul to Serrekunda Taxi'].id,
+      vehicleId: vehicles['GMD-TAXI-01'].id,
+      departureTime: today,
+      estimatedArrival: todayArrival,
+      status: 'SCHEDULED',
+    },
+    {
+      routeId: routes['Banjul to Serrekunda Taxi'].id,
+      vehicleId: vehicles['GMD-TAXI-01'].id,
+      departureTime: tomorrow,
+      estimatedArrival: tomorrowArrival,
+      status: 'SCHEDULED',
+    },
+  ]
+
+  for (const trip of trips) {
+    const exists = await prisma.trip.findFirst({
+      where: {
+        routeId: trip.routeId,
+        vehicleId: trip.vehicleId,
+        departureTime: trip.departureTime,
+      },
+    })
+    if (!exists) {
+      await prisma.trip.create({ data: trip })
+    }
+  }
+}
+
 async function main() {
   console.log('Starting database seed...')
 
@@ -156,6 +316,12 @@ async function main() {
   const vehicleTypes = await seedVehicleTypes()
 
   await seedFares(localities, vehicleTypes)
+
+  const routes = await seedRoutes(localities, vehicleTypes)
+  const operator = await seedOperatorUser()
+  const passenger = await seedPassengerUser()
+  const vehicles = await seedVehicles(operator, routes)
+  await seedTrips(routes, vehicles)
 
   console.log('Gambian transport data seeded successfully')
 }

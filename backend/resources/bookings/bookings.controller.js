@@ -10,14 +10,28 @@ const createBooking = async (req, res) => {
 
     let resolvedFareId = fareId;
 
-    // Check if trip exists
+    // Check if trip exists and load its capacity and bookings
     const trip = await prisma.trip.findUnique({
       where: { id: tripId },
-      include: { vehicle: true },
+      include: {
+        vehicle: true,
+        route: true,
+        bookings: {
+          where: { status: { in: ['CONFIRMED', 'COMPLETED'] } },
+          select: { id: true },
+        },
+      },
     });
 
     if (!trip) {
       return res.status(404).json({ message: 'Trip not found' });
+    }
+
+    const occupiedSeats = trip.bookings.length;
+    const capacity = trip.vehicle?.capacity || 0;
+
+    if (capacity > 0 && occupiedSeats >= capacity) {
+      return res.status(400).json({ message: 'Trip is fully booked' });
     }
 
     // Check if seat is available
@@ -61,23 +75,29 @@ const createBooking = async (req, res) => {
     const bookingReference = `PASSO-${Date.now()}-${uuidv4().slice(0, 8)}`;
 
     // Create booking
-    const booking = await prisma.booking.create({
-      data: {
-        tripId,
-        passengerId,
-        fareId: resolvedFareId,
-        seatNumber,
-        totalPrice,
-        bookingReference,
-        status: 'CONFIRMED',
-        paymentStatus: 'PENDING',
-      },
-      include: {
-        trip: { include: { route: true, vehicle: true } },
-        fare: { include: { fromLocality: true, toLocality: true } },
-        passenger: { select: { email: true, name: true, phone: true } },
-      },
-    });
+    const [booking] = await prisma.$transaction([
+      prisma.booking.create({
+        data: {
+          tripId,
+          passengerId,
+          fareId: resolvedFareId,
+          seatNumber,
+          totalPrice,
+          bookingReference,
+          status: 'CONFIRMED',
+          paymentStatus: 'PENDING',
+        },
+        include: {
+          trip: { include: { route: true, vehicle: true } },
+          fare: { include: { fromLocality: true, toLocality: true } },
+          passenger: { select: { email: true, name: true, phone: true } },
+        },
+      }),
+      prisma.trip.update({
+        where: { id: tripId },
+        data: { occupiedSeats: { increment: 1 } },
+      }),
+    ]);
 
     // Create notification
     await prisma.notification.create({
@@ -171,6 +191,13 @@ const cancelBooking = async (req, res) => {
       where: { id: parseInt(bookingId) },
       data: { status: 'CANCELLED' },
     });
+
+    if (booking.status === 'CONFIRMED') {
+      await prisma.trip.update({
+        where: { id: booking.tripId },
+        data: { occupiedSeats: { decrement: 1 } },
+      });
+    }
 
     // Create notification
     await prisma.notification.create({

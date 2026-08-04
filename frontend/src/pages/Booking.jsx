@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MapPin, Clock, Users, DollarSign, Loader } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function BookingPage() {
   const { tripId } = useParams();
@@ -83,7 +83,7 @@ export default function BookingPage() {
     );
   }
 
-  const availableSeats = (trip.vehicle?.capacity || 0) - (trip.bookings?.length || 0);
+  const availableSeats = trip.availableSeats ?? ((trip.vehicle?.capacity || 0) - (trip.bookings?.length || 0));
   const farePrice = trip.route?.fares?.[0]?.price || trip.route?.fare?.price || 0;
 
   return (
